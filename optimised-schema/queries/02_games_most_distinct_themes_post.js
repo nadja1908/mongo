@@ -1,18 +1,19 @@
 // Post-optimized: games with most distinct themes (uses index-friendly lookups)
 const db = db.getSiblingDB('mongo_database');
 
+// Use derived collection `games_metrics` which contains a `themes` array per game
+//
+// Indexes used by this POST implementation (run these after migration):
+// db.games_metrics.createIndex({ YearPublished: 1 })           // if you filter by year in other variants
+// db.games_metrics.createIndex({ AvgRating: -1 })              // helps sorting/filtering by rating
+// db.games_metrics.createIndex({ themes: 1 })                  // supports existence/array queries on themes
+// db.games_metrics.createIndex({ BGGId: 1 })                   // supports lookups / reinflation
 const pipeline = [
-  { $project: { BGGId:1, arr: { $objectToArray: '$$ROOT' } } },
-  { $unwind: '$arr' },
-  { $match: { 'arr.k': { $ne: '_id' }, 'arr.k': { $ne: 'BGGId' }, 'arr.v': 1 } },
-  { $group: { _id: '$BGGId', themeCount: { $sum: 1 } } },
-  { $lookup: { from: 'games_clean', localField: '_id', foreignField: 'BGGId', as: 'game' } },
-  { $unwind: { path: '$game', preserveNullAndEmptyArrays: true } },
-  { $project: { _id:1, themeCount:1, AvgRating: '$game.AvgRating', NumOwned: '$game.NumOwned' } },
+  { $project: { BGGId:1, themeCount: { $size: { $ifNull: ['$themes', []] } }, AvgRating:1, NumOwned:1 } },
   { $sort: { themeCount: -1 } }
 ];
 
-const arr = db.themes_clean.aggregate(pipeline).toArray();
+const arr = db.games_metrics.aggregate(pipeline).toArray();
 const top3 = arr.slice(0,3);
 const bottom3 = arr.slice(-3);
 const total = arr.length;

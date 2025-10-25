@@ -1,32 +1,32 @@
 // Post-optimized (index-friendly): mechanics_popular_by_avg_gt8
-// This version uses a localField/foreignField $lookup so the join can use the
-// `games_clean.BGGId` index when types align. After the join we filter by AvgRating > 8.
+// This version uses the derived collection `mechanic_to_games` so we avoid scanning
+// `mechanics_clean` and can use indexes on the derived collection.
+//
+// Indexes used by this POST implementation (run these after migration):
+// db.mechanic_to_games.createIndex({ mechanic: 1, AvgRating: -1 })
+//   - helps: filter by AvgRating and retrieve top games per mechanic efficiently
+// db.mechanic_to_games.createIndex({ BGGId: 1 })
+//   - helps: joins/lookups during migration and any reinflation by BGGId
+// db.games_metrics.createIndex({ AvgRating: -1 })
+//   - used during migration and useful as a fallback on game-side queries
 const db = db.getSiblingDB('mongo_database');
 
+// Use derived collection `mechanic_to_games` (pre-computed mapping) so we avoid scanning mechanics_clean
 const pipeline = [
-  // Project only the mechanic flags and BGGId to reduce working set
-  { $project: { BGGId: 1, _id: 0, arr: { $objectToArray: '$$ROOT' } } },
-  { $unwind: '$arr' },
-  { $match: { 'arr.v': 1, 'arr.k': { $nin: ['BGGId'] } } },
-  // Use a simple localField/foreignField lookup (fast when types match)
-  { $lookup: { from: 'games_clean', localField: 'BGGId', foreignField: 'BGGId', as: 'game' } },
-  { $unwind: '$game' },
-  // Now filter joined games by AvgRating to avoid scanning everything in JS
-  { $match: { 'game.AvgRating': { $gt: 8 } } },
+  // Filter games by AvgRating on the derived mapping
+  { $match: { AvgRating: { $gt: 8 } } },
   { $group: {
-      _id: '$arr.k',
+      _id: '$mechanic',
       countGames: { $sum: 1 },
-      avgRating: { $avg: '$game.AvgRating' },
-      avgBayes: { $avg: '$game.BayesAvgRating' },
-      sumNumUserRatings: { $sum: '$game.NumUserRatings' },
-      sumNumOwned: { $sum: '$game.NumOwned' },
-      stddevRating: { $stdDevSamp: '$game.AvgRating' }
+      avgRating: { $avg: '$AvgRating' },
+      avgBayes: { $avg: '$BayesAvgRating' },
+      sumNumOwned: { $sum: '$NumOwned' },
+      stddevRating: { $stdDevSamp: '$AvgRating' }
   } },
   { $sort: { countGames: -1 } }
 ];
 
-// Run aggregation with allowDiskUse in case the grouping is large
-const cursor = db.mechanics_clean.aggregate(pipeline, { allowDiskUse: true });
+const cursor = db.mechanic_to_games.aggregate(pipeline, { allowDiskUse: true });
 const results = cursor.toArray();
 
 const top3 = results.slice(0,3);

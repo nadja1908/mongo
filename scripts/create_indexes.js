@@ -17,6 +17,20 @@ const ops = [
   { coll: 'games_clean', spec: { Publisher: 1 }, opts: { } },
   { coll: 'themes_clean', spec: { BGGId: 1 }, opts: { } },
   { coll: 'ratings_distribution_clean', spec: { bin: 1 }, opts: { } },
+  // Derived collections
+  { coll: 'games_metrics', spec: { BGGId: 1 }, opts: { } },
+  { coll: 'games_metrics', spec: { BayesAvgRating: -1 }, opts: { } },
+  { coll: 'games_metrics', spec: { NumOwned: -1 }, opts: { } },
+  { coll: 'games_metrics', spec: { AvgRating: -1 }, opts: { } },
+  { coll: 'games_metrics', spec: { YearPublished: 1, AvgRating: -1 }, opts: { } },
+  { coll: 'games_metrics', spec: { YearPublished: 1, NumOwned: -1 }, opts: { } },
+  { coll: 'games_metrics', spec: { mechanics: 1 }, opts: { } },
+  { coll: 'mechanic_to_games', spec: { mechanic: 1, AvgRating: -1 }, opts: { } },
+  { coll: 'mechanic_to_games', spec: { BGGId: 1 }, opts: { } },
+  { coll: 'designer_game', spec: { designer: 1, publisher: 1 }, opts: { } },
+  { coll: 'designer_game', spec: { BGGId: 1 }, opts: { } },
+  { coll: 'designer_publisher_agg', spec: { '_id.designer': 1, '_id.publisher': 1 }, opts: { } },
+  { coll: 'designer_publisher_agg', spec: { avgRating: -1 }, opts: { } },
   // If you have designers_reduced_clean with frequent lookups, ensure games_clean.BGGId exists (already above)
 ];
 

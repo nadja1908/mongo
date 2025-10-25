@@ -36,9 +36,16 @@ if not entries:
 from collections import defaultdict
 groups = defaultdict(list)
 for e in entries:
+    # skip aggregate-run entries that may not have script
+    if 'script' not in e or 'stage' not in e:
+        continue
     script = Path(e['script']).name
     key = (script, e['stage'])
-    groups[key].append(int(e.get('durationMillis') or 0))
+    try:
+        groups[key].append(int(e.get('durationMillis') or 0))
+    except Exception:
+        # ignore entries that don't have numeric duration
+        continue
 
 summary = {}
 md = []

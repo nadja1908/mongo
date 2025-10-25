@@ -130,7 +130,79 @@ db.games_clean.createIndex({ NumOwned: -1 });
 db.mechanics_clean.createIndex({ BGGId: 1 });
 ```
 
+## Indexes used per POST query
+
+Below is a concise mapping of each optimized (POST) query to the derived collection(s) and the exact index commands used for the benchmark. These indexes are created by `scripts/create_indexes.js` but are listed here for reproducibility.
+
+- 01_mechanics_popular_by_avg_gt8 (POST)
+  - derived collection: `mechanic_to_games`
+  - indexes:
+    - db.mechanic_to_games.createIndex({ mechanic: 1, AvgRating: -1 })
+      - Rationale: enables fast filtering by AvgRating and efficient retrieval/top-N per mechanic.
+    - db.mechanic_to_games.createIndex({ BGGId: 1 })
+      - Rationale: supports joins / reinflation by BGGId during migration or detail lookup.
+
+- 02_games_most_distinct_themes (POST)
+  - derived collection: `games_metrics` (contains `themes` array)
+  - indexes:
+    - db.games_metrics.createIndex({ themes: 1 })
+      - Rationale: supports array/exists checks and makes per-game theme counting cheaper.
+    - db.games_metrics.createIndex({ AvgRating: -1 })
+      - Rationale: helps sorting/filtering by rating when computing buckets or top games.
+    - db.games_metrics.createIndex({ BGGId: 1 })
+      - Rationale: supports lookups or joining back to full game docs.
+
+- 03_avg_rating_by_designer_publisher (POST)
+  - derived collection: `designer_publisher_agg` (pre-aggregated designer+publisher metrics)
+  - indexes:
+    - db.designer_publisher_agg.createIndex({ avgRating: -1 })
+      - Rationale: returns top designer+publisher pairs quickly from pre-aggregated results.
+    - db.designer_game.createIndex({ designer: 1, publisher: 1 })
+      - Rationale: used during migration to build the pre-aggregates and for direct lookups.
+    - db.games_metrics.createIndex({ NumUserRatings: -1 })
+      - Rationale: used during migration when filtering games by user-ratings threshold.
+
+- 04_avg_ratings_by_year_games (POST)
+  - derived collection: `games_metrics`
+  - indexes:
+    - db.games_metrics.createIndex({ YearPublished: 1, AvgRating: -1 })
+      - Rationale: supports grouping by year and quickly retrieving top-rated games per year.
+    - db.games_metrics.createIndex({ AvgRating: -1 })
+      - Rationale: general purpose sort by rating.
+
+- 05_top_games_rating_vs_popularity (POST)
+  - collection: `games_clean` (or `games_metrics` if you prefer a lighter set)
+  - indexes:
+    - db.games_clean.createIndex({ BayesAvgRating: -1 })
+      - Rationale: fast top-N by rating (BayesAvgRating).
+    - db.games_clean.createIndex({ NumOwned: -1 })
+      - Rationale: fast top-N by popularity (NumOwned).
+    - db.ratings_distribution_clean.createIndex({ bin: 1 })
+      - Rationale: speeds up the distribution lookup used to compute pctHighRatings.
+
+Notes:
+- The PRE (baseline) queries intentionally run against the original collections without these derived collections/indexes so you can measure the raw baseline performance.
+- The `scripts/create_indexes.js` file already contains the commands used for the benchmark; this section documents them per-query for clarity and reproducibility.
+
+
 These were created before running the inverted `games_clean`-first mechanics pipeline and the full harness.
+
+## Explain (executionStats) observed for POST queries
+
+I collected explain('executionStats') for each POST query (saved under `bench_results/explains_post/`).
+Below are the measured execution times from those explains. In some explains the detailed counters (docsExamined / keysExamined)
+may be absent depending on the operation shape; I included executionTimeMillis which was consistently present.
+
+- 01_mechanics_popular_by_avg_gt8_post: executionTimeMillis = 23 ms
+- 02_games_most_distinct_themes_post: executionTimeMillis = 70 ms
+- 03_avg_rating_by_designer_publisher_post: executionTimeMillis = 2 ms
+- 04_avg_ratings_by_year_games_post: executionTimeMillis = 87 ms
+- 05_top_games_rating_vs_popularity_post: executionTimeMillis = 67 ms
+
+The raw explain JSONs are in `bench_results/explains_post/` and a compact summary was written to
+`bench_results/explains_summary.json`.
+
+If you'd like, I can expand the explains to include the winningPlan details and per-stage docsExamined/keysExamined where available and add a short interpretation line per query (e.g., "uses IXSCAN on X index" or "COLLSCAN observed on stage Y").
 
 ### Timing summary (median of 3 runs)
 
