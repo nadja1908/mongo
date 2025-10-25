@@ -22,7 +22,8 @@ const ops = [
 
 for (const op of ops) {
   try {
-    print(`Creating index on ${op.coll}: ${tojson(op.spec)}`);
+    // tojson may not be available in some shells; use JSON.stringify for portability
+    print(`Creating index on ${op.coll}: ${JSON.stringify(op.spec)}`);
     const res = db.getCollection(op.coll).createIndex(op.spec, op.opts);
     print(` -> ${res}`);
   } catch (e) {
