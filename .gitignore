@@ -1,0 +1,36 @@
+# Node / JS / mongo shell helpers
+node_modules/
+npm-debug.log
+.DS_Store
+
+# VSCode
+.vscode/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Bench outputs (keep summary CSVs)
+bench_results/*.json
+!bench_results/summary_prepost.csv
+!bench_results/summary_prepost_with_metrics.csv
+bench_results/all_prepost_outputs.json
+bench_results/prepost_runs_with_time.jsonl
+
+# Dumps / data (do NOT commit large raw data)
+dump/
+data/
+*.bson
+*.csv
+*.zip
+
+# tmp scripts / experiments (optional)
+scripts/lele*
+scripts/tmp_time_pre_*.js
+scripts/tmp_time_post_*.js
+bench_runner_with_time.js
+
+# OS files
+Thumbs.db
+ehthumbs.db
+*.log
