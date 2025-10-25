@@ -117,23 +117,39 @@ Select-String -Path .\bench_results\all_prepost_outputs.json -Pattern '"stage"' 
 python .\scripts\extract_durations.py
 ```
 
-### Timing summary (last run)
+### Indexes created for the benchmark run
 
-Tabela ispod sadrži min/median/mean trajanja za prethodno pokretanje harness-a (iz `bench_results/prepost_runs_with_time.jsonl`). Ako imaš više pokretanja, mogu agregirati po medijani ili minimumu.
+The following indexes were created to support the optimized (post) pipelines and the inverted mechanics pipeline used in the experiments below:
+
+```javascript
+db.games_clean.createIndex({ AvgRating: 1 });
+db.games_clean.createIndex({ AvgRating: 1, BGGId: 1 });
+db.games_clean.createIndex({ YearPublished: 1, AvgRating: -1 });
+db.games_clean.createIndex({ BayesAvgRating: -1 });
+db.games_clean.createIndex({ NumOwned: -1 });
+db.mechanics_clean.createIndex({ BGGId: 1 });
+```
+
+These were created before running the inverted `games_clean`-first mechanics pipeline and the full harness.
+
+### Timing summary (median of 3 runs)
+
+Below are the median/min/mean durations (ms) computed from three harness runs. Use the median column for stable comparisons between PRE and POST versions.
 
 | Script | Stage | Runs | Min (ms) | Median (ms) | Mean (ms) |
 |---|---:|---:|---:|---:|---:|
-| 01_mechanics_popular_by_avg_gt8_post.js | post | 1 | 18080 | 18080 | 18080 |
-| 02_games_most_distinct_themes_post.js | post | 1 | 11846 | 11846 | 11846 |
-| 02_games_most_distinct_themes_pre.js | pre | 1 | 10949 | 10949 | 10949 |
-| 03_avg_rating_by_designer_publisher_post.js | post | 1 | 45799 | 45799 | 45799 |
-| 03_avg_rating_by_designer_publisher_pre.js | pre | 1 | 56159 | 56159 | 56159 |
-| 04_avg_ratings_by_year_games_post.js | post | 1 | 7935 | 7935 | 7935 |
-| 04_avg_ratings_by_year_games_pre.js | pre | 1 | 7256 | 7256 | 7256 |
-| 05_top_games_rating_vs_popularity_post.js | post | 1 | 12850 | 12850 | 12850 |
-| 05_top_games_rating_vs_popularity_pre.js | pre | 1 | 9795 | 9795 | 9795 |
+| 01_mechanics_popular_by_avg_gt8_post.js | post | 3 | 17536 | 19088 | 18732 |
+| 01_mechanics_popular_by_avg_gt8_pre.js | pre | 3 | 18066 | 19833 | 19570 |
+| 02_games_most_distinct_themes_post.js | post | 3 | 7053 | 7621 | 7704 |
+| 02_games_most_distinct_themes_pre.js | pre | 3 | 8748 | 9785 | 10356 |
+| 03_avg_rating_by_designer_publisher_post.js | post | 3 | 45153 | 48433 | 50944 |
+| 03_avg_rating_by_designer_publisher_pre.js | pre | 3 | 45828 | 45960 | 51263 |
+| 04_avg_ratings_by_year_games_post.js | post | 3 | 1457 | 1799 | 2021 |
+| 04_avg_ratings_by_year_games_pre.js | pre | 3 | 1758 | 2294 | 2266 |
+| 05_top_games_rating_vs_popularity_post.js | post | 3 | 10542 | 13482 | 13831 |
+| 05_top_games_rating_vs_popularity_pre.js | pre | 3 | 8869 | 10063 | 11035 |
 
-Timing JSON summary written to `bench_results/timing_summary.json`
+Timing JSON summary written to `bench_results/timing_summary.json` (updated after runs)
 - Docker (to run a temporary `mongo:7.0` container with `mongosh`), or a running MongoDB instance accessible from your machine.
 - Node.js is not strictly required (scripts are mongosh JS) but handy for small helpers.
 

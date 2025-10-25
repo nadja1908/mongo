@@ -16,7 +16,8 @@ if not INFILE.exists():
     raise SystemExit(1)
 
 entries = []
-with INFILE.open('r', encoding='utf-8') as f:
+# Open with utf-8-sig to tolerate BOMs produced by PowerShell redirection
+with INFILE.open('r', encoding='utf-8-sig') as f:
     for line in f:
         line = line.strip()
         if not line:
@@ -24,7 +25,7 @@ with INFILE.open('r', encoding='utf-8') as f:
         try:
             obj = json.loads(line)
             entries.append(obj)
-        except Exception as e:
+        except Exception:
             # skip parse errors
             continue
 
